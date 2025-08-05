@@ -161,41 +161,41 @@ def prf_ecc_pcm_plot(df_ecc_pcm, data_pcm_raw, fig_width, fig_height, rois, roi_
             df = df_ecc_pcm.loc[(df_ecc_pcm.roi == roi)]
             data_pcm_raw_roi = data_pcm_raw.loc[(data_pcm_raw.roi == roi)]
             
-            ecc_median = np.array(df.prf_ecc_bins)
-            pcm_median = np.array(df.prf_pcm_bins_median)
-            r2_median = np.array(df.prf_r2_bins_median)
-            pcm_upper_bound = np.array(df.prf_pcm_bins_ci_upper_bound)
-            pcm_lower_bound = np.array(df.prf_pcm_bins_ci_lower_bound)
+            ecc_median = np.array(df.prf_ecc)
+            pcm_median = np.array(df.pRF_CM)
+            r2_median = np.array(df.prf_r2)
+            # pcm_upper_bound = np.array(df.prf_pcm_bins_ci_upper_bound)
+            # pcm_lower_bound = np.array(df.prf_pcm_bins_ci_lower_bound)
             
             # Linear regression
             slope, intercept = weighted_regression(ecc_median, pcm_median, r2_median, model='pcm')
             
-            slope_upper, intercept_upper = weighted_regression(ecc_median[~np.isnan(pcm_upper_bound)], 
-                                                               pcm_upper_bound[~np.isnan(pcm_upper_bound)], 
-                                                               r2_median[~np.isnan(pcm_upper_bound)], 
-                                                               model='pcm')
+            # slope_upper, intercept_upper = weighted_regression(ecc_median[~np.isnan(pcm_upper_bound)], 
+            #                                                    pcm_upper_bound[~np.isnan(pcm_upper_bound)], 
+            #                                                    r2_median[~np.isnan(pcm_upper_bound)], 
+            #                                                    model='pcm')
             
-            slope_lower, intercept_lower = weighted_regression(ecc_median[~np.isnan(pcm_lower_bound)], 
-                                                               pcm_lower_bound[~np.isnan(pcm_lower_bound)], 
-                                                               r2_median[~np.isnan(pcm_lower_bound)], 
-                                                               model='pcm')
+            # slope_lower, intercept_lower = weighted_regression(ecc_median[~np.isnan(pcm_lower_bound)], 
+            #                                                    pcm_lower_bound[~np.isnan(pcm_lower_bound)], 
+            #                                                    r2_median[~np.isnan(pcm_lower_bound)], 
+            #                                                    model='pcm')
 
-            line_x = np.linspace(ecc_median[0], ecc_median[-1], 50)
+            line_x = data_pcm_raw_roi['prf_ecc']
             line = 1 / (slope * line_x + intercept)
-            line_upper = 1 / (slope_upper * line_x + intercept_upper)
-            line_lower = 1 / (slope_lower * line_x + intercept_lower)
+            # line_upper = 1 / (slope_upper * line_x + intercept_upper)
+            # line_lower = 1 / (slope_lower * line_x + intercept_lower)
 
+            horton_line = 17.3/(data_pcm_raw_roi['prf_ecc'] + 0.75)
             
-            
-            # Filtrer les NaN dans les données
+            # Filtrer nan
             valid_idx = ~np.isnan(pcm_median) & ~np.isnan(ecc_median)
             x_valid = ecc_median[valid_idx]
             y_valid = pcm_median[valid_idx]
             
-            # Générer les prédictions avec ton modèle (y = 1/(cx + d))
+            # make prediction
             y_pred = 1 / (slope * x_valid + intercept)
             
-            # Calculer R²
+            # compute r2 
             r2 = r2_score(y_valid, y_pred)
             # Markers all point
             fig.add_trace(go.Scatter(x=data_pcm_raw_roi['prf_ecc'], 
@@ -213,41 +213,51 @@ def prf_ecc_pcm_plot(df_ecc_pcm, data_pcm_raw, fig_width, fig_height, rois, roi_
 
             fig.add_trace(go.Scatter(x=line_x, 
                                      y=line, 
-                                     mode='lines', 
+                                     mode='markers', 
                                      name=roi, 
                                      legendgroup=roi, 
                                      line=dict(color=roi_color, width=3), 
                                      showlegend=False), 
                           row=1, col=l+1)
 
-            # Error area
-            fig.add_trace(go.Scatter(x=np.concatenate([line_x, line_x[::-1]]),
-                                      y=np.concatenate([list(line_upper), list(line_lower[::-1])]), 
-                                      mode='lines', fill='toself', fillcolor=roi_color_opac, 
-                                      line=dict(color=roi_color_opac, width=0), showlegend=False), 
-                          row=1, col=l+1)
+            # Horton prediction
+            fig.add_trace(go.Scatter(x=data_pcm_raw_roi['prf_ecc'], 
+                         y=horton_line, 
+                         mode='markers', 
+                         name=roi, 
+                         legendgroup=roi, 
+                         line=dict(color='black', width=3), 
+                         showlegend=False), 
+              row=1, col=l+1)
+
+            # # Error area
+            # fig.add_trace(go.Scatter(x=np.concatenate([line_x, line_x[::-1]]),
+            #                           y=np.concatenate([list(line_upper), list(line_lower[::-1])]), 
+            #                           mode='lines', fill='toself', fillcolor=roi_color_opac, 
+            #                           line=dict(color=roi_color_opac, width=0), showlegend=False), 
+            #               row=1, col=l+1)
 
 
-            # Bin markers
-            fig.add_trace(go.Scatter(x=ecc_median, 
-                                     y=pcm_median, 
-                                     mode='markers', 
-                                     error_y=dict(type='data', 
-                                                  array=pcm_upper_bound - pcm_median, 
-                                                  arrayminus=pcm_median - pcm_lower_bound,
-                                                  visible=True, 
-                                                  thickness=3, 
-                                                  width=0, 
-                                                  color=roi_color),
-                                     marker=dict(color=roi_color, 
-                                                 symbol='square',
-                                                 size=8, line=dict(color=roi_color,
-                                                                   width=3)), 
-                                     showlegend=False), 
-                          row=1, col=l + 1)
+            # # Bin markers
+            # fig.add_trace(go.Scatter(x=ecc_median, 
+            #                          y=pcm_median, 
+            #                          mode='markers', 
+            #                          error_y=dict(type='data', 
+            #                                       array=pcm_upper_bound - pcm_median, 
+            #                                       arrayminus=pcm_median - pcm_lower_bound,
+            #                                       visible=True, 
+            #                                       thickness=3, 
+            #                                       width=0, 
+            #                                       color=roi_color),
+            #                          marker=dict(color=roi_color, 
+            #                                      symbol='square',
+            #                                      size=8, line=dict(color=roi_color,
+            #                                                        width=3)), 
+            #                          showlegend=False), 
+            #               row=1, col=l + 1)
             
             # Add legend
-            annotation = go.layout.Annotation(x=5, y=80, text='{}, R<sup>2</sup>={:.2f}'.format(roi,r2), xanchor='left',
+            annotation = go.layout.Annotation(x=5, y=20, text='{}, R<sup>2</sup>={:.2f}'.format(roi,r2), xanchor='left',
                                               showarrow=False, font_color=roi_color, 
                                               font_family=template_specs['font'],
                                               font_size=template_specs['axes_font_size'],
@@ -257,8 +267,10 @@ def prf_ecc_pcm_plot(df_ecc_pcm, data_pcm_raw, fig_width, fig_height, rois, roi_
         # Set axis titles only for the left-most column and bottom-most row
         fig.update_yaxes(title_text='pRF cortical magn. (mm/dva)', row=1, col=1)
         fig.update_xaxes(title_text='pRF eccentricity (dva)', range=[0, max_ecc], showline=True, row=1, col=l+1)
-        fig.update_yaxes(range=[0, 100], showline=True)
-        fig.update_layout(height=fig_height, width=fig_width, showlegend=False, template=fig_template,
-                         margin_l=100, margin_r=50, margin_t=50, margin_b=100)
+        fig.update_yaxes(range=[0, 20], showline=True)
+        # fig.update_layout(height=fig_height, width=fig_width, showlegend=False, template=fig_template,
+        #                  # margin_l=100, margin_r=50, margin_t=50, margin_b=100
+        #                  )
+        fig.update_layout(showlegend=False, template=fig_template)
         
     return fig
