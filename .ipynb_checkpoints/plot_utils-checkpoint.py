@@ -159,6 +159,8 @@ def prf_ecc_pcm_plot(df_ecc_pcm, data_pcm_raw, fig_width, fig_height, rois, roi_
             
             # Get data
             df = df_ecc_pcm.loc[(df_ecc_pcm.roi == roi)]
+            data_pcm_raw_roi = data_pcm_raw.loc[(data_pcm_raw.roi == roi)]
+            
             ecc_median = np.array(df.prf_ecc_bins)
             pcm_median = np.array(df.prf_pcm_bins_median)
             r2_median = np.array(df.prf_r2_bins_median)
@@ -196,8 +198,8 @@ def prf_ecc_pcm_plot(df_ecc_pcm, data_pcm_raw, fig_width, fig_height, rois, roi_
             # Calculer R²
             r2 = r2_score(y_valid, y_pred)
             # Markers all point
-            fig.add_trace(go.Scatter(x=data_pcm_raw['prf_ecc'], 
-                                     y=data_pcm_raw['pRF_CM'], 
+            fig.add_trace(go.Scatter(x=data_pcm_raw_roi['prf_ecc'], 
+                                     y=data_pcm_raw_roi['pRF_CM'], 
                                      mode='markers', 
                                      marker=dict(color=roi_color, 
                                                  symbol='circle', 
@@ -255,7 +257,7 @@ def prf_ecc_pcm_plot(df_ecc_pcm, data_pcm_raw, fig_width, fig_height, rois, roi_
         # Set axis titles only for the left-most column and bottom-most row
         fig.update_yaxes(title_text='pRF cortical magn. (mm/dva)', row=1, col=1)
         fig.update_xaxes(title_text='pRF eccentricity (dva)', range=[0, max_ecc], showline=True, row=1, col=l+1)
-        fig.update_yaxes(range=[0, 80], showline=True)
+        fig.update_yaxes(range=[0, 100], showline=True)
         fig.update_layout(height=fig_height, width=fig_width, showlegend=False, template=fig_template,
                          margin_l=100, margin_r=50, margin_t=50, margin_b=100)
         
