@@ -117,8 +117,8 @@ def weighted_nan_percentile(data, weights, percentile):
 
 def weighted_regression(x_reg, y_reg, weight_reg, model):
     """
-    Function to compute regression parameter weighted by a matrix (e.g. r2 value),
-    where the regression model is y = 1/(cx) + d.
+    Function to compute regression parameters weighted by a matrix (e.g. r2 value),
+    where the regression model is y = 1/(cx) + d or a linear model.
 
     Parameters
     ----------
@@ -135,52 +135,46 @@ def weighted_regression(x_reg, y_reg, weight_reg, model):
     -------
     coef_reg : float or array
         regression coefficient(s)
-    intercept_reg : float or str
-        regression intercept or a string indicating no intercept (for linear model)
+    intercept_reg : float
+        regression intercept
+    r_squared : float
+        coefficient of determination
     """
-
     import numpy as np
     from scipy.optimize import curve_fit
-    from sklearn import linear_model
-    
-    
-    
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import r2_score
+
     x_reg = np.array(x_reg)
     y_reg = np.array(y_reg)
-    
     weight_reg = np.array(weight_reg)
 
     # Filter out NaN values
-    x_reg_nan = x_reg[(~np.isnan(x_reg) & ~np.isnan(y_reg))]
-    y_reg_nan = y_reg[(~np.isnan(x_reg) & ~np.isnan(y_reg))]
-    weight_reg_nan = weight_reg[~np.isnan(weight_reg)]
-    
+    mask = (~np.isnan(x_reg) & ~np.isnan(y_reg) & ~np.isnan(weight_reg))
+    x_reg_nan = x_reg[mask]
+    y_reg_nan = y_reg[mask]
+    weight_reg_nan = weight_reg[mask]
+
+    if len(x_reg_nan) < 2:  # Not enough data
+        return np.nan, np.nan, np.nan
+
     if model == 'pcm':
         # Define the model function
         def model_function(x, c, d):
             return 1 / (c * x + d)
 
-        if weight_reg_nan.size >= 2:
-            # Perform curve fitting
-            params, _ = curve_fit(model_function, x_reg_nan, y_reg_nan, sigma=weight_reg_nan, maxfev=10000)
-            c, d = params
-        else:
-            c, d = np.nan, np.nan
-        return c, d
+        # Perform curve fitting
+        params, _ = curve_fit(model_function, x_reg_nan, y_reg_nan, sigma=weight_reg_nan, maxfev=10000)
+        c, d = params
+        y_pred = model_function(x_reg_nan, c, d)
+        coef_reg, intercept_reg = c, d
 
     elif model == 'linear':
-        if weight_reg_nan.size >= 2:
-            regr = linear_model.LinearRegression()
-            
-            # Filter out NaN values
-            x_reg_nan = x_reg_nan.reshape(-1, 1)
-            y_reg_nan = y_reg_nan.reshape(-1, 1)
-            
-            regr.fit(x_reg_nan, y_reg_nan, sample_weight=weight_reg_nan)
-            coef_reg, intercept_reg = regr.coef_[0][0], regr.intercept_[0]
-        else: 
-            coef_reg, intercept_reg = np.nan, np.nan
-        return coef_reg, intercept_reg
-    else:
-        raise ValueError("Invalid model type. Supported models are 'pcm' and 'linear'.")
+        # Fit a weighted linear regression
+        reg = LinearRegression()
+        reg.fit(x_reg_nan.reshape(-1, 1), y_reg_nan, sample_weight=weight_reg_nan)
+        y_pred = reg.predict(x_reg_nan.reshape(-1, 1))
+        coef_reg, intercept_reg = reg.coef_[0], reg.intercept_
 
+
+    return coef_reg, intercept_reg
