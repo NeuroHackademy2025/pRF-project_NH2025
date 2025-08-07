@@ -164,7 +164,12 @@ def weighted_regression(x_reg, y_reg, weight_reg, model):
             return 1 / (c * x + d)
 
         # Perform curve fitting 
-        params, _ = curve_fit(model_function, x_reg_nan, y_reg_nan, sigma=weight_reg_nan, p0=[0.1, 1.0], maxfev=50000 )
+        # params, _ = curve_fit(model_function, x_reg_nan, y_reg_nan, sigma=weight_reg_nan, p0=[0.1, 1.0], maxfev=50000 )
+        params, _ = curve_fit(model_function, x_reg_nan, y_reg_nan,
+                      sigma=1/(weight_reg_nan+1e-6),
+                      p0=[0.1, 1.0],
+                      bounds=([0, 0], [np.inf, np.inf]),
+                      maxfev=50000)
         c, d = params
         y_pred = model_function(x_reg_nan, c, d)
         coef_reg, intercept_reg = c, d
