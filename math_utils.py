@@ -163,8 +163,8 @@ def weighted_regression(x_reg, y_reg, weight_reg, model):
         def model_function(x, c, d):
             return 1 / (c * x + d)
 
-        # Perform curve fitting
-        params, _ = curve_fit(model_function, x_reg_nan, y_reg_nan, sigma=weight_reg_nan, maxfev=10000)
+        # Perform curve fitting 
+        params, _ = curve_fit(model_function, x_reg_nan, y_reg_nan, sigma=weight_reg_nan, p0=[0.1, 1.0], maxfev=50000 )
         c, d = params
         y_pred = model_function(x_reg_nan, c, d)
         coef_reg, intercept_reg = c, d
